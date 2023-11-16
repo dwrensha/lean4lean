@@ -18,6 +18,7 @@ structure TypeChecker.State where
   whnfCache : ExprMap Expr := {}
   eqvManager : EquivManager := {}
   failure : HashSet (Expr × Expr) := {}
+  enc : Expr → Expr := id -- enclosing expression
 
 structure TypeChecker.Context where
   env : Environment
@@ -481,9 +482,9 @@ def isDefEqForall (t s : Expr) (subst : Array Expr := #[]) : RecM Bool :=
   | t, s => isDefEq (t.instantiateRev subst) (s.instantiateRev subst)
 
 def quickIsDefEq (t s : Expr) (useHash := false) : RecM LBool := do
-  if ← modifyGet fun (.mk a1 a2 a3 a4 a5 a6 (eqvManager := m)) =>
+  if ← modifyGet fun (.mk a1 a2 a3 a4 a5 a6 (eqvManager := m) enc) =>
     let (b, m) := m.isEquiv useHash t s
-    (b, .mk a1 a2 a3 a4 a5 a6 (eqvManager := m))
+    (b, .mk a1 a2 a3 a4 a5 a6 (eqvManager := m) enc)
   then return .true
   match t, s with
   | .lam .., .lam .. => toLBoolM <| isDefEqLambda t s

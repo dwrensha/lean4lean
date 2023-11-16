@@ -12,11 +12,12 @@ partial def reduce' (e : Expr) : TypeChecker.M Expr :=
         match e with
         | Expr.app .. =>
           let f     ← visit e.getAppFn
-          let nargs := e.getAppNumArgs
-          --let finfo ← getFunInfoNArgs f nargs
           let mut args  := e.getAppArgs
           for i in [:args.size] do
+            --let penc := (←get).enc
             args ← args.modifyM i visit
+            --modify fun s ↦ { s with s.enc := fun exp ↦ mkAppFn f }
+
 
           if f.isConstOf ``Nat.succ && args.size == 1 && args[0]!.isNatLit then
             return mkRawNatLit (args[0]!.natLit?.get! + 1)
