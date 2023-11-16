@@ -80,12 +80,13 @@ def decimalDigitsAux : Nat → Nat → List Nat
 def decimalDigits' (x : Nat) : List Nat := decimalDigitsAux x x
 
 --#l4lwhnf decimalDigits 104546
---#l4lreduce decimalDigits' 4
+-- #l4lreduce decimalDigits' 4
 
-#l4lreduce [1,2] ++ [3,4]
+--#l4lreduce [1,2] ++ [3,4]
 
 --set_option maxHeartbeats 0 in
---#l4lreduce decimalDigits 13
+--set_option pp.proofs true in
+--#l4lreduce decimalDigits 1
 
 def iterate {α : Sort _} (op : α → α) : Nat → α → α
  | 0,          a  => a

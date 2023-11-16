@@ -68,7 +68,11 @@ def traceStep (e : Expr) : M Unit := do
   if ta then
     let tr := (← get).trace
     let enc := (← get).enc
-    modify fun st => {st with trace := (enc e) :: tr}
+    let e' := enc e
+    let tr' := match tr with
+    | [] => [e']
+    | t::ts => if t == e' then t :: ts else e' :: t :: ts
+    modify fun st => {st with trace := tr'}
 
 def traceStepRec (e : Expr) : RecM Unit := traceStep e
 
