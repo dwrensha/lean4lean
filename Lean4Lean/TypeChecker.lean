@@ -97,7 +97,8 @@ def disableTracing {α : Type} (act : RecM α) : RecM α := do
 
 def toCtorWhenK' (env : Environment) (whnf : Expr → RecM Expr) (inferType : Expr → RecM Expr) (isDefEq : Expr → Expr → RecM Bool) (rval : RecursorVal) (e : Expr) : RecM Expr := do
   assert! rval.k
-  let appType ← disableTracing (whnf (← inferType e))
+  let appType' ← disableTracing (inferType e)
+  let appType ← disableTracing (whnf appType')
   let .const appTypeI _ := appType.getAppFn | return e
   if appTypeI != rval.getInduct then return e
   if appType.hasExprMVar then
@@ -105,13 +106,13 @@ def toCtorWhenK' (env : Environment) (whnf : Expr → RecM Expr) (inferType : Ex
     for h : i in [rval.numParams:appTypeArgs.size] do
       if (appTypeArgs[i]'h.2).hasExprMVar then return e
   let some newCtorApp := mkNullaryCtor env appType rval.numParams | return e
-  unless ← isDefEq appType (← inferType newCtorApp) do return e
+  unless ← disableTracing (isDefEq appType (← inferType newCtorApp)) do return e
   return newCtorApp
 
 def inductiveReduceRec' (env : Environment) (e : Expr)
     (whnf : Expr → RecM Expr) (inferType : Expr → RecM Expr) (isDefEq : Expr → Expr → RecM Bool) :
     RecM (Option Expr) := do
-  disableTracing do
+  --disableTracing do
   let .const recFn ls := e.getAppFn | return none
   let some (.recInfo info) := env.find? recFn | return none
   let recArgs := e.getAppArgs
@@ -120,10 +121,12 @@ def inductiveReduceRec' (env : Environment) (e : Expr)
   let mut major := major
   if info.k then
     major ← toCtorWhenK' env whnf inferType isDefEq info major
-  match ← whnf major with
+  let major' ←
+    descendExprRec (fun ee ↦ mkAppN e.getAppFn (recArgs.set! majorIdx ee)) (whnf major)
+  match major' with
   | .lit (.natVal n) => major := .natLitToConstructor n
   | .lit (.strVal s) => major := .strLitToConstructor s
-  | e => major ← toCtorWhenStruct env whnf inferType info.getInduct e
+  | e => major ← disableTracing (toCtorWhenStruct env whnf inferType info.getInduct e)
   let some rule := getRecRuleFor info major | return none
   let majorArgs := major.getAppArgs
   if rule.nfields > majorArgs.size then return none
@@ -408,7 +411,8 @@ def whnfCore' (e : Expr) (cheapRec := false) (cheapProj := false) : RecM Expr :=
         let cont2 := do
           let r := f.instantiateRange (rargs.size - m) rargs.size rargs
           let r := r.mkAppRevRange 0 (rargs.size - m) rargs
-          save <|← disableTracing (whnfCore r cheapRec cheapProj)
+--          save <|← disableTracing (whnfCore r cheapRec cheapProj)
+          save <|← whnfCore r cheapRec cheapProj
         if let .lam _ _ body _ := f then
           if m < rargs.size then loop (m + 1) body
           else cont2
