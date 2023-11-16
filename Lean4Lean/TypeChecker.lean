@@ -403,13 +403,12 @@ def whnfCore' (e : Expr) (cheapRec := false) (cheapProj := false) : RecM Expr :=
     e.withAppRev fun f0 rargs => do
     let f ← TypeChecker.descendExprRec (fun f' ↦ mkAppN f' rargs.reverse) do
        (whnfCore f0 cheapRec cheapProj)
---    let f ← whnfCore f0 cheapRec cheapProj
     if let .lam _ _ body _ := f then
       let rec loop m (f : Expr) : RecM Expr :=
         let cont2 := do
           let r := f.instantiateRange (rargs.size - m) rargs.size rargs
           let r := r.mkAppRevRange 0 (rargs.size - m) rargs
-          save <|← whnfCore r cheapRec cheapProj
+          save <|← disableTracing (whnfCore r cheapRec cheapProj)
         if let .lam _ _ body _ := f then
           if m < rargs.size then loop (m + 1) body
           else cont2
@@ -467,14 +466,18 @@ def reduceNative (_env : Environment) (e : Expr) : Except KernelException (Optio
 
 def natLitExt? (e : Expr) : Option Nat := if e == .natZero then some 0 else e.natLit?
 
-def reduceBinNatOp (f : Nat → Nat → Nat) (a b : Expr) : RecM (Option Expr) := do
-  let some v1 := natLitExt? (← whnf a) | return none
-  let some v2 := natLitExt? (← whnf b) | return none
+def reduceBinNatOp (f : Nat → Nat → Nat) (fe a b : Expr) : RecM (Option Expr) := do
+  let a' ← descendExprRec (fun aa ↦ mkAppN fe #[aa, b]) (whnf a)
+  let some v1 := natLitExt? a' | return none
+  let b' ← descendExprRec (fun bb ↦ mkAppN fe #[a', bb]) (whnf b)
+  let some v2 := natLitExt? b' | return none
   return some <| .lit <| .natVal <| f v1 v2
 
-def reduceBinNatPred (f : Nat → Nat → Bool) (a b : Expr) : RecM (Option Expr) := do
-  let some v1 := natLitExt? (← whnf a) | return none
-  let some v2 := natLitExt? (← whnf b) | return none
+def reduceBinNatPred (f : Nat → Nat → Bool) (fe a b : Expr) : RecM (Option Expr) := do
+  let a' ← descendExprRec (fun aa ↦ mkAppN fe #[aa, b]) (whnf a)
+  let some v1 := natLitExt? a' | return none
+  let b' ← descendExprRec (fun bb ↦ mkAppN fe #[a', bb]) (whnf b)
+  let some v2 := natLitExt? b' | return none
   return toExpr <| f v1 v2
 
 def reduceNat (e : Expr) : RecM (Option Expr) := do
@@ -483,19 +486,21 @@ def reduceNat (e : Expr) : RecM (Option Expr) := do
   if nargs == 1 then
     let f := e.appFn!
     if f == .const ``Nat.succ [] then
-      let some v := natLitExt? (← whnf e.appArg!) | return none
-      return some <| .lit <| .natVal <| v + 1
+      let r ← descendExprRec (fun a ↦ mkAppN f #[a]) do
+        let some v := natLitExt? (← whnf e.appArg!) | return none
+        return some <| .lit <| .natVal <| v + 1
+      return r
   else if nargs == 2 then
-    let .app (.app (.const f _) a) b := e | return none
-    if f == ``Nat.add then return ← reduceBinNatOp Nat.add a b
-    if f == ``Nat.sub then return ← reduceBinNatOp Nat.sub a b
-    if f == ``Nat.mul then return ← reduceBinNatOp Nat.mul a b
-    if f == ``Nat.pow then return ← reduceBinNatOp Nat.pow a b
-    if f == ``Nat.gcd then return ← reduceBinNatOp Nat.gcd a b
-    if f == ``Nat.mod then return ← reduceBinNatOp Nat.mod a b
-    if f == ``Nat.div then return ← reduceBinNatOp Nat.div a b
-    if f == ``Nat.beq then return ← reduceBinNatPred Nat.beq a b
-    if f == ``Nat.ble then return ← reduceBinNatPred Nat.ble a b
+    let .app (.app fe@(.const f _) a) b := e | return none
+    if f == ``Nat.add then return ← reduceBinNatOp Nat.add fe a b
+    if f == ``Nat.sub then return ← reduceBinNatOp Nat.sub fe a b
+    if f == ``Nat.mul then return ← reduceBinNatOp Nat.mul fe a b
+    if f == ``Nat.pow then return ← reduceBinNatOp Nat.pow fe a b
+    if f == ``Nat.gcd then return ← reduceBinNatOp Nat.gcd fe a b
+    if f == ``Nat.mod then return ← reduceBinNatOp Nat.mod fe a b
+    if f == ``Nat.div then return ← reduceBinNatOp Nat.div fe a b
+    if f == ``Nat.beq then return ← reduceBinNatPred Nat.beq fe a b
+    if f == ``Nat.ble then return ← reduceBinNatPred Nat.ble fe a b
   return none
 
 
