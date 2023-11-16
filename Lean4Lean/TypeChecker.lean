@@ -531,6 +531,7 @@ def whnf' (e : Expr) : RecM Expr := do
     loop t fuel
   let r ← loop e 1000
   modify fun s => { s with whnfCache := s.whnfCache.insert e r }
+  traceStep r
   return r
 
 def isDefEqLambda (t s : Expr) (subst : Array Expr := #[]) : RecM Bool :=
