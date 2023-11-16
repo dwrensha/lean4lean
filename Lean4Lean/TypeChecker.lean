@@ -85,6 +85,45 @@ def descendExprRec {α : Type} (f : Expr → Expr) (act : RecM α) : RecM α := 
   modify fun st => {st with enc := enc}
   pure r
 
+def toCtorWhenK' (env : Environment) (whnf : Expr → RecM Expr) (inferType : Expr → RecM Expr) (isDefEq : Expr → Expr → RecM Bool) (rval : RecursorVal) (e : Expr) : RecM Expr := do
+  assert! rval.k
+  let appType ← whnf (← inferType e)
+  let .const appTypeI _ := appType.getAppFn | return e
+  if appTypeI != rval.getInduct then return e
+  if appType.hasExprMVar then
+    let appTypeArgs := appType.getAppArgs
+    for h : i in [rval.numParams:appTypeArgs.size] do
+      if (appTypeArgs[i]'h.2).hasExprMVar then return e
+  let some newCtorApp := mkNullaryCtor env appType rval.numParams | return e
+  unless ← isDefEq appType (← inferType newCtorApp) do return e
+  return newCtorApp
+
+def inductiveReduceRec' (env : Environment) (e : Expr)
+    (whnf : Expr → RecM Expr) (inferType : Expr → RecM Expr) (isDefEq : Expr → Expr → RecM Bool) :
+    RecM (Option Expr) := do
+  let .const recFn ls := e.getAppFn | return none
+  let some (.recInfo info) := env.find? recFn | return none
+  let recArgs := e.getAppArgs
+  let majorIdx := info.getMajorIdx
+  let some major := recArgs[majorIdx]? | return none
+  let mut major := major
+  if info.k then
+    major ← toCtorWhenK' env whnf inferType isDefEq info major
+  match ← whnf major with
+  | .lit (.natVal n) => major := .natLitToConstructor n
+  | .lit (.strVal s) => major := .strLitToConstructor s
+  | e => major ← toCtorWhenStruct env whnf inferType info.getInduct e
+  let some rule := getRecRuleFor info major | return none
+  let majorArgs := major.getAppArgs
+  if rule.nfields > majorArgs.size then return none
+  if ls.length != info.levelParams.length then return none
+  let mut rhs := rule.rhs.instantiateLevelParams info.levelParams ls
+  rhs := mkAppRange rhs 0 info.getFirstIndexIdx recArgs
+  rhs := mkAppRange rhs (majorArgs.size - rule.nfields) majorArgs.size majorArgs
+  if majorIdx + 1 < recArgs.size then
+    rhs := mkAppRange rhs (majorIdx + 1) recArgs.size recArgs
+  return rhs
+
 namespace Inner
 
 def whnf (e : Expr) : RecM Expr := fun m => m.whnf e
@@ -310,7 +349,7 @@ def reduceRecursor (e : Expr) (cheapRec cheapProj : Bool) : RecM (Option Expr) :
     if let some r ← quotReduceRec e whnf then
       return r
   let whnf' e := if cheapRec then whnfCore e cheapRec cheapProj else whnf e
-  if let some r ← inductiveReduceRec env e whnf' inferType isDefEq then
+  if let some r ← inductiveReduceRec' env e whnf' inferType isDefEq then
     return r
   return none
 
