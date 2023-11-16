@@ -20,6 +20,7 @@ structure TypeChecker.State where
   failure : HashSet (Expr × Expr) := {}
   enc : Expr → Expr := id -- enclosing expression
   trace : List Expr := {}
+  traceEnabled : Bool := true
 
 structure TypeChecker.Context where
   env : Environment
@@ -63,9 +64,11 @@ inductive ReductionStatus where
   | bool (b : Bool)
 
 def traceStep (e : Expr) : M Unit := do
-  let tr := (← get).trace
-  let enc := (← get).enc
-  modify fun st => {st with trace := (enc e) :: tr}
+  let ta := (← get).traceEnabled
+  if ta then
+    let tr := (← get).trace
+    let enc := (← get).enc
+    modify fun st => {st with trace := (enc e) :: tr}
 
 def traceStepRec (e : Expr) : RecM Unit := traceStep e
 
@@ -85,9 +88,16 @@ def descendExprRec {α : Type} (f : Expr → Expr) (act : RecM α) : RecM α := 
   modify fun st => {st with enc := enc}
   pure r
 
+def disableTracing {α : Type} (act : RecM α) : RecM α := do
+  let ta := (← get).traceEnabled
+  modify fun st => {st with traceEnabled := false}
+  let r ← act
+  modify fun st => {st with traceEnabled := ta}
+  pure r
+
 def toCtorWhenK' (env : Environment) (whnf : Expr → RecM Expr) (inferType : Expr → RecM Expr) (isDefEq : Expr → Expr → RecM Bool) (rval : RecursorVal) (e : Expr) : RecM Expr := do
   assert! rval.k
-  let appType ← whnf (← inferType e)
+  let appType ← disableTracing (whnf (← inferType e))
   let .const appTypeI _ := appType.getAppFn | return e
   if appTypeI != rval.getInduct then return e
   if appType.hasExprMVar then
@@ -101,6 +111,7 @@ def toCtorWhenK' (env : Environment) (whnf : Expr → RecM Expr) (inferType : Ex
 def inductiveReduceRec' (env : Environment) (e : Expr)
     (whnf : Expr → RecM Expr) (inferType : Expr → RecM Expr) (isDefEq : Expr → Expr → RecM Bool) :
     RecM (Option Expr) := do
+  disableTracing do
   let .const recFn ls := e.getAppFn | return none
   let some (.recInfo info) := env.find? recFn | return none
   let recArgs := e.getAppArgs
@@ -550,9 +561,9 @@ def isDefEqForall (t s : Expr) (subst : Array Expr := #[]) : RecM Bool :=
   | t, s => isDefEq (t.instantiateRev subst) (s.instantiateRev subst)
 
 def quickIsDefEq (t s : Expr) (useHash := false) : RecM LBool := do
-  if ← modifyGet fun (.mk a1 a2 a3 a4 a5 a6 (eqvManager := m) enc tr) =>
+  if ← modifyGet fun (.mk a1 a2 a3 a4 a5 a6 (eqvManager := m) enc tr ta) =>
     let (b, m) := m.isEquiv useHash t s
-    (b, .mk a1 a2 a3 a4 a5 a6 (eqvManager := m) enc tr)
+    (b, .mk a1 a2 a3 a4 a5 a6 (eqvManager := m) enc tr ta)
   then return .true
   match t, s with
   | .lam .., .lam .. => toLBoolM <| isDefEqLambda t s

@@ -83,4 +83,4 @@ def decimalDigits' (x : Nat) : List Nat := decimalDigitsAux x x
 --#l4lreduce decimalDigits' 13
 
 --set_option maxHeartbeats 0 in
---#l4lreduce decimalDigits 49
+-- #l4lreduce decimalDigits 13
