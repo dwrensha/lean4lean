@@ -19,6 +19,7 @@ structure TypeChecker.State where
   eqvManager : EquivManager := {}
   failure : HashSet (Expr × Expr) := {}
   enc : Expr → Expr := id -- enclosing expression
+  trace : List Expr := {}
 
 structure TypeChecker.Context where
   env : Environment
@@ -60,6 +61,10 @@ inductive ReductionStatus where
   | continue (tn sn : Expr)
   | unknown (tn sn : Expr)
   | bool (b : Bool)
+
+def traceStep (e : Expr) : M Unit := do
+  let tr := (← get).trace
+  modify fun st => {st with trace := e :: tr}
 
 namespace Inner
 
@@ -482,9 +487,9 @@ def isDefEqForall (t s : Expr) (subst : Array Expr := #[]) : RecM Bool :=
   | t, s => isDefEq (t.instantiateRev subst) (s.instantiateRev subst)
 
 def quickIsDefEq (t s : Expr) (useHash := false) : RecM LBool := do
-  if ← modifyGet fun (.mk a1 a2 a3 a4 a5 a6 (eqvManager := m) enc) =>
+  if ← modifyGet fun (.mk a1 a2 a3 a4 a5 a6 (eqvManager := m) enc tr) =>
     let (b, m) := m.isEquiv useHash t s
-    (b, .mk a1 a2 a3 a4 a5 a6 (eqvManager := m) enc)
+    (b, .mk a1 a2 a3 a4 a5 a6 (eqvManager := m) enc tr)
   then return .true
   match t, s with
   | .lam .., .lam .. => toLBoolM <| isDefEqLambda t s

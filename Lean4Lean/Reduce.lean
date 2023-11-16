@@ -8,6 +8,7 @@ open Lean Lean.Meta Lean.Elab Lean.Elab.Command
 
 partial def reduce' (e : Expr) : TypeChecker.M Expr :=
   let rec visit (e : Expr) : TypeChecker.M Expr := do
+        TypeChecker.traceStep e
         let e ← TypeChecker.whnf e
         match e with
         | Expr.app .. =>
@@ -29,6 +30,10 @@ partial def reduce' (e : Expr) : TypeChecker.M Expr :=
         | Expr.proj n i s .. => return mkProj n i (← visit s)
         | _                  => return e
   visit e
+
+partial def reduceAndTrace (e : Expr) : TypeChecker.M (Expr × List Expr) := do
+  let e' ← reduce' e
+  pure (e', (← get).trace.reverse)
 
 syntax (name := l4lwhnf) "#l4lwhnf " term : command
 
@@ -52,9 +57,12 @@ syntax (name := l4lreduce) "#l4lreduce " term : command
     Term.synthesizeSyntheticMVarsNoPostponing
     let e ← Term.levelMVarToParam (← instantiateMVars e)
     let env ← getEnv
-    let e' ← match TypeChecker.M.run env .safe {} (reduce' e) with
+    let (e', tr) ← match TypeChecker.M.run env .safe {} (reduceAndTrace e) with
           | .error _e => throwError "kernel exception"
-          | .ok e => pure e
+          | .ok v => pure v
+    for t in tr do
+      let p ← Lean.PrettyPrinter.ppExpr t
+      dbg_trace p
     logInfoAt tk e'
   | _ => throwUnsupportedSyntax
 
@@ -72,5 +80,7 @@ def decimalDigitsAux : Nat → Nat → List Nat
 
 def decimalDigits' (x : Nat) : List Nat := decimalDigitsAux x x
 
-#l4lwhnf decimalDigits 104546
-#l4lreduce decimalDigits' 1045667
+--#l4lwhnf decimalDigits 104546
+--#l4lreduce decimalDigits' 4
+
+-- #l4lreduce decimalDigits 134
