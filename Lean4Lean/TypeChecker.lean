@@ -333,7 +333,7 @@ def isLetFVar (lctx : LocalContext) (fvar : FVarId) : Bool :=
   lctx.find? fvar matches some (.ldecl ..)
 
 def whnfCore' (e : Expr) (cheapRec := false) (cheapProj := false) : RecM Expr := do
---  traceStep e
+  traceStep e
   match e with
   | .bvar .. | .sort .. | .mvar .. | .forallE .. | .const .. | .lam .. | .lit .. => return e
   | .mdata _ e => return ← whnfCore' e cheapRec cheapProj
@@ -375,8 +375,10 @@ def whnfCore' (e : Expr) (cheapRec := false) (cheapProj := false) : RecM Expr :=
       save <|← whnfCore r cheapRec cheapProj
   | .letE _ _ val body _ =>
     save <|← whnfCore (body.instantiate1 val) cheapRec cheapProj
-  | .proj _ idx s =>
-    if let some m ← reduceProj idx s cheapRec cheapProj then
+  | .proj nm idx s =>
+    let mm ← TypeChecker.descendExprRec (fun s' ↦ .proj nm idx s') do
+      reduceProj idx s cheapRec cheapProj
+    if let some m := mm then
       save <|← whnfCore m cheapRec cheapProj
     else
       save e

@@ -6,8 +6,6 @@ import Lean.Util.MonadCache
 
 open Lean Lean.Meta Lean.Elab Lean.Elab.Command
 
-#check Array.modify
-
 partial def reduce' (e : Expr) : TypeChecker.M Expr :=
   let rec visit (e : Expr) : TypeChecker.M Expr := do
         TypeChecker.traceStep e
@@ -82,6 +80,6 @@ def decimalDigitsAux : Nat → Nat → List Nat
 def decimalDigits' (x : Nat) : List Nat := decimalDigitsAux x x
 
 --#l4lwhnf decimalDigits 104546
---#l4lreduce decimalDigits' 1
+-- #l4lreduce decimalDigits' 3
 
 --#l4lreduce decimalDigits 13
