@@ -82,6 +82,6 @@ def decimalDigitsAux : Nat → Nat → List Nat
 def decimalDigits' (x : Nat) : List Nat := decimalDigitsAux x x
 
 --#l4lwhnf decimalDigits 104546
--- #l4lreduce decimalDigits' 1
+--#l4lreduce decimalDigits' 1
 
--- #l4lreduce decimalDigits 134
+--#l4lreduce decimalDigits 13

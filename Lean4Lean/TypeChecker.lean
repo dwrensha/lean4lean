@@ -67,7 +67,17 @@ def traceStep (e : Expr) : M Unit := do
   let enc := (← get).enc
   modify fun st => {st with trace := (enc e) :: tr}
 
+def traceStepRec (e : Expr) : RecM Unit := traceStep e
+
 def descendExpr {α : Type} (f : Expr → Expr) (act : M α) : M α := do
+  let enc := (← get).enc
+  let enc' := fun e ↦ enc (f e)
+  modify fun st => {st with enc := enc'}
+  let r ← act
+  modify fun st => {st with enc := enc}
+  pure r
+
+def descendExprRec {α : Type} (f : Expr → Expr) (act : RecM α) : RecM α := do
   let enc := (← get).enc
   let enc' := fun e ↦ enc (f e)
   modify fun st => {st with enc := enc'}
@@ -323,6 +333,7 @@ def isLetFVar (lctx : LocalContext) (fvar : FVarId) : Bool :=
   lctx.find? fvar matches some (.ldecl ..)
 
 def whnfCore' (e : Expr) (cheapRec := false) (cheapProj := false) : RecM Expr := do
+--  traceStep e
   match e with
   | .bvar .. | .sort .. | .mvar .. | .forallE .. | .const .. | .lam .. | .lit .. => return e
   | .mdata _ e => return ← whnfCore' e cheapRec cheapProj
@@ -340,7 +351,9 @@ def whnfCore' (e : Expr) (cheapRec := false) (cheapProj := false) : RecM Expr :=
   | .fvar _ => return ← whnfFVar e cheapRec cheapProj
   | .app .. =>
     e.withAppRev fun f0 rargs => do
-    let f ← whnfCore f0 cheapRec cheapProj
+    let f ← TypeChecker.descendExprRec (fun f' ↦ mkAppN f' rargs.reverse) do
+       (whnfCore f0 cheapRec cheapProj)
+--    let f ← whnfCore f0 cheapRec cheapProj
     if let .lam _ _ body _ := f then
       let rec loop m (f : Expr) : RecM Expr :=
         let cont2 := do
