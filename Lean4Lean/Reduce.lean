@@ -6,19 +6,19 @@ import Lean.Util.MonadCache
 
 open Lean Lean.Meta Lean.Elab Lean.Elab.Command
 
+#check Array.modify
+
 partial def reduce' (e : Expr) : TypeChecker.M Expr :=
   let rec visit (e : Expr) : TypeChecker.M Expr := do
         TypeChecker.traceStep e
         let e ← TypeChecker.whnf e
         match e with
         | Expr.app .. =>
-          let f     ← visit e.getAppFn
-          let mut args  := e.getAppArgs
+          let mut args := e.getAppArgs
+          let f     ← TypeChecker.descendExpr (fun f' ↦ mkAppN f' args) (visit e.getAppFn)
           for i in [:args.size] do
-            --let penc := (←get).enc
-            args ← args.modifyM i visit
-            --modify fun s ↦ { s with s.enc := fun exp ↦ mkAppFn f }
-
+            args ← TypeChecker.descendExpr (fun exp ↦ mkAppN f (args.set! i exp)) do
+              args.modifyM i visit
 
           if f.isConstOf ``Nat.succ && args.size == 1 && args[0]!.isNatLit then
             return mkRawNatLit (args[0]!.natLit?.get! + 1)
@@ -63,6 +63,7 @@ syntax (name := l4lreduce) "#l4lreduce " term : command
     for t in tr do
       let p ← Lean.PrettyPrinter.ppExpr t
       dbg_trace p
+      dbg_trace "\n"
     logInfoAt tk e'
   | _ => throwUnsupportedSyntax
 
@@ -81,6 +82,6 @@ def decimalDigitsAux : Nat → Nat → List Nat
 def decimalDigits' (x : Nat) : List Nat := decimalDigitsAux x x
 
 --#l4lwhnf decimalDigits 104546
---#l4lreduce decimalDigits' 4
+-- #l4lreduce decimalDigits' 1
 
 -- #l4lreduce decimalDigits 134

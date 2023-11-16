@@ -64,7 +64,16 @@ inductive ReductionStatus where
 
 def traceStep (e : Expr) : M Unit := do
   let tr := (← get).trace
-  modify fun st => {st with trace := e :: tr}
+  let enc := (← get).enc
+  modify fun st => {st with trace := (enc e) :: tr}
+
+def descendExpr {α : Type} (f : Expr → Expr) (act : M α) : M α := do
+  let enc := (← get).enc
+  let enc' := fun e ↦ enc (f e)
+  modify fun st => {st with enc := enc'}
+  let r ← act
+  modify fun st => {st with enc := enc}
+  pure r
 
 namespace Inner
 
