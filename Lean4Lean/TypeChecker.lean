@@ -288,8 +288,13 @@ def inferLet (e : Expr) (inferOnly : Bool) : RecM Expr := loop #[] #[] e where
         usedFVars := usedFVars.push fvar
     return (← getLCtx).mkForall fvars r
 
-def isProp (e : Expr) : RecM Bool :=
-  return (← whnf (← inferType e)) == .prop
+def isProp (e : Expr) : RecM Bool := do
+  let ty := (← whnf (← inferType e))
+  return ty == .prop
+
+def isProp' (e : Expr) : RecM Bool := do
+  let ty := (← inferType e)
+  return ty == .prop
 
 def inferProj (typeName : Name) (idx : Nat) (struct structType : Expr) : RecM Expr := do
   let e := Expr.proj typeName idx struct
@@ -407,6 +412,7 @@ def whnfCore' (e : Expr) (cheapRec := false) (cheapProj := false) : RecM Expr :=
   | .mdata .. => unreachable!
   | .fvar _ => return ← whnfFVar e cheapRec cheapProj
   | .app .. =>
+    --if ←isProp' e then return e
     e.withAppRev fun f0 rargs => do
     let f ← TypeChecker.descendExprRec (fun f' ↦ mkAppN f' rargs.reverse) do
        (whnfCore f0 cheapRec cheapProj)
@@ -510,7 +516,6 @@ def reduceNat (e : Expr) : RecM (Option Expr) := do
     if f == ``Nat.beq then return ← reduceBinNatPred Nat.beq fe a b
     if f == ``Nat.ble then return ← reduceBinNatPred Nat.ble fe a b
   return none
-
 
 def whnf' (e : Expr) : RecM Expr := do
   -- Do not cache easy cases

@@ -33,6 +33,19 @@ partial def reduceAndTrace (e : Expr) : TypeChecker.M (Expr × List Expr) := do
   let e' ← reduce' e
   pure (e', (← get).trace.reverse)
 
+def Lean.KernelException.toString (e : KernelException) : String := match e with
+| .unknownConstant .. => "unknown constant"
+| .alreadyDeclared .. => "already declared"
+| .declTypeMismatch .. => "decl type mismatch"
+| .declHasMVars .. => "decl has mvars"
+| .declHasFVars .. => "decl has fvars"
+| .funExpected .. => "fun expected"
+| .other s => s!"other: {s}"
+| .deepRecursion => "deep recursion"
+| .deterministicTimeout => "deterministic timeout"
+| .excessiveMemory => "excessive memory"
+| _ => "x"
+
 syntax (name := l4lwhnf) "#l4lwhnf " term : command
 
 @[command_elab l4lwhnf] def elabl4lwhnf : CommandElab
@@ -56,7 +69,7 @@ syntax (name := l4lreduce) "#l4lreduce " term : command
     let e ← Term.levelMVarToParam (← instantiateMVars e)
     let env ← getEnv
     let (e', tr) ← match TypeChecker.M.run env .safe {} (reduceAndTrace e) with
-          | .error _e => throwError "kernel exception"
+          | .error e => throwError s!"kernel exception: {e.toString}"
           | .ok v => pure v
     for t in tr do
       let p ← Lean.PrettyPrinter.ppExpr t
@@ -84,9 +97,10 @@ def decimalDigits' (x : Nat) : List Nat := decimalDigitsAux x x
 
 --#l4lreduce [1,2] ++ [3,4]
 
---set_option maxHeartbeats 0 in
+set_option maxHeartbeats 0 in
 --set_option pp.proofs true in
---#l4lreduce decimalDigits 1
+--set_option pp.explicit true in
+#l4lreduce decimalDigits 1
 
 def iterate {α : Sort _} (op : α → α) : Nat → α → α
  | 0,          a  => a
@@ -97,3 +111,5 @@ def ackermann : Nat → Nat → Nat
  | p + 1 => fun n ↦ iterate (ackermann p) n (ackermann p 1)
 
 --#l4lreduce ackermann 1 1
+
+#check Acc.rec
