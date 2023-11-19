@@ -12,3 +12,6 @@ example : f (id ⟨.intro,.intro⟩) = 1 := rfl --recursor reduces here
 
 --set_option pp.proofs true in
 --#l4lreduce f (Omega _ ⟨.intro,.intro⟩)
+
+-- eval works: returns "1"
+#eval f (Omega _ ⟨.intro,.intro⟩)
