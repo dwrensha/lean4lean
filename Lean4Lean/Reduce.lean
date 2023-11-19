@@ -30,8 +30,8 @@ partial def reduce' (e : Expr) : TypeChecker.M Expr :=
   visit e
 
 partial def reduceAndTrace (e : Expr) : TypeChecker.M (Expr × List Expr) := do
-  let e' ← reduce' e
-  pure (e', (← get).trace.reverse)
+   let e' ← reduce' e
+   pure (e', (← get).trace.reverse)
 
 def Lean.KernelException.toString (e : KernelException) : String := match e with
 | .unknownConstant .. => "unknown constant"
@@ -78,7 +78,6 @@ syntax (name := l4lreduce) "#l4lreduce " term : command
     logInfoAt tk e'
   | _ => throwUnsupportedSyntax
 
-
 def one_lt_ten : 1 < 10 := Nat.succ_lt_succ (Nat.succ_pos 8)
 
 --- l4lreduce has trouble with this
@@ -100,7 +99,7 @@ def decimalDigits' (x : Nat) : List Nat := decimalDigitsAux x x
 
 --#l4lreduce [1,2] ++ [3,4]
 
-set_option maxHeartbeats 0 in
+--set_option maxHeartbeats 0 in
 --set_option pp.proofs true in
 --set_option pp.explicit true in
 --#l4lreduce decimalDigits 1

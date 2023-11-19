@@ -531,6 +531,10 @@ def whnf' (e : Expr) : RecM Expr := do
     return r
   let rec loop t
   | 0 => throw .deterministicTimeout
+      -- do this instead if you want to have a chance of not clobbering the
+      -- state on infinite loops:
+      -- dbg_trace "looped too many times!"
+      --return t
   | fuel+1 => do
     let env ← getEnv
     let t ← whnfCore' t
