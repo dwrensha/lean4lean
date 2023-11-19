@@ -78,11 +78,14 @@ syntax (name := l4lreduce) "#l4lreduce " term : command
     logInfoAt tk e'
   | _ => throwUnsupportedSyntax
 
+
+def one_lt_ten : 1 < 10 := Nat.succ_lt_succ (Nat.succ_pos 8)
+
 --- l4lreduce has trouble with this
 def decimalDigits : Nat → List Nat
   | 0 => []
   | n + 1 => ((n + 1) % 10 :: decimalDigits ((n + 1) / 10))
-decreasing_by exact Nat.div_lt_self (Nat.succ_pos _) (Nat.succ_lt_succ <| Nat.succ_pos 8)
+decreasing_by exact Nat.div_lt_self (Nat.succ_pos _) one_lt_ten
 
 -- if we add a "gas" parameter, then l4lreduce does just fine.
 def decimalDigitsAux : Nat → Nat → List Nat
@@ -100,7 +103,16 @@ def decimalDigits' (x : Nat) : List Nat := decimalDigitsAux x x
 set_option maxHeartbeats 0 in
 --set_option pp.proofs true in
 --set_option pp.explicit true in
-#l4lreduce decimalDigits 1
+--#l4lreduce decimalDigits 1
+
+--set_option pp.all true in
+--#l4lreduce 2 + 2
+--#l4lreduce "hello".length
+
+
+-- #l4lreduce "hello" ++ "world"
+-- convert between numeric types...
+-- quicksort
 
 def iterate {α : Sort _} (op : α → α) : Nat → α → α
  | 0,          a  => a
