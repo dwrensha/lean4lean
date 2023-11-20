@@ -71,10 +71,12 @@ syntax (name := l4lreduce) "#l4lreduce " term : command
     let (e', tr) ← match TypeChecker.M.run env .safe {} (reduceAndTrace e) with
           | .error e => throwError s!"kernel exception: {e.toString}"
           | .ok v => pure v
-    for t in tr do
-      let p ← Lean.PrettyPrinter.ppExpr t
-      dbg_trace p
-      dbg_trace "\n"
+    let pp ← tr.mapM (fun x ↦ do
+      let x' ← Lean.PrettyPrinter.ppExpr x
+      pure (Std.Format.pretty x' 80))
+
+    let ppj := Lean.ToJson.toJson pp
+    dbg_trace ppj
     logInfoAt tk e'
   | _ => throwUnsupportedSyntax
 
