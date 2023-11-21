@@ -128,3 +128,11 @@ def ackermann : Nat → Nat → Nat
 --#l4lreduce ackermann 1 1
 
 #check Acc.rec
+
+
+def fib : Nat → Nat
+| 0 => 1
+| 1 => 1
+| n + 2 => fib n + fib (n + 1)
+
+--#l4lreduce fib 10
