@@ -9,6 +9,7 @@ open Std
 --#eval (HashMap.empty.insert 1 1).isEmpty  -- false
 
 
+--set_option maxHeartbeats 0 in
 --#l4lreduce (HashMap.empty.insert 1 1).isEmpty
 
 --example : (HashMap.empty : HashMap Nat Nat).isEmpty = true := rfl -- okay

@@ -78,8 +78,10 @@ def LINE_WIDTH := 150
       let e ← Term.levelMVarToParam (← instantiateMVars e)
       let env ← getEnv
       match TypeChecker.M.run env .safe {} (reduceAndTrace e) with
-          | .error e => throwError s!"kernel exception: {e.toString}"
-          | .ok v => pure v
+          | .error ⟨ke, tr⟩ => do
+            dbg_trace s!"kernel exception: {ke.toString}"
+            pure (none, tr)
+          | .ok ⟨e, tr⟩ => pure (e, tr)
 
     let plain ← do
       modifyScope fun s ↦ s
@@ -99,7 +101,8 @@ def LINE_WIDTH := 150
     let mut traces : Traces := ⟨plain, with_proofs⟩
     let ppj := Lean.ToJson.toJson traces
     dbg_trace ppj
-    logInfoAt tk e'
+    if let some e' := e' then
+      logInfoAt tk e'
   | _ => throwUnsupportedSyntax
 
 def one_lt_ten : 1 < 10 := Nat.succ_lt_succ (Nat.succ_pos 8)

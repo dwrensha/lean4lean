@@ -30,10 +30,17 @@ structure TypeChecker.Context where
 
 namespace TypeChecker
 
-abbrev M := ReaderT Context <| StateT State <| Except KernelException
+structure KernelException' where
+  exc : KernelException
+  trace : List Expr
+
+abbrev M := ReaderT Context <| StateT State <| Except KernelException'
+
+def throw' {α} (e : KernelException) : M α := do
+  throw ⟨e, (← get).trace.reverse⟩
 
 def M.run (env : Environment) (safety : DefinitionSafety := .safe) (lctx : LocalContext := {})
-    (x : M α) : Except KernelException α :=
+    (x : M α) : Except KernelException' α :=
   x { env, safety, lctx } |>.run' {}
 
 instance : MonadEnv M where
@@ -153,37 +160,40 @@ def ensureSortCore (e s : Expr) : RecM Expr := do
   if e.isSort then return e
   let e ← whnf e
   if e.isSort then return e
-  throw <| .typeExpected (← getEnv) (← getLCtx) s
+  throw' <| .typeExpected (← getEnv) (← getLCtx) s
 
 def ensureForallCore (e s : Expr) : RecM Expr := do
   if e.isForall then return e
   let e ← whnf e
   if e.isForall then return e
-  throw <| .funExpected (← getEnv) (← getLCtx) s
+  throw' <| .funExpected (← getEnv) (← getLCtx) s
 
-def checkLevel (tc : Context) (l : Level) : Except KernelException Unit := do
+def checkLevel (tc : Context) (l : Level) : RecM Unit := do
   if let some n2 := l.getUndefParam tc.lparams then
-    throw <| .other s!"invalid reference to undefined universe level parameter '{n2}'"
+    throw' <| .other
+      s!"invalid reference to undefined universe level parameter '{n2}'"
 
-def inferFVar (tc : Context) (name : FVarId) : Except KernelException Expr := do
+def inferFVar (tc : Context) (name : FVarId) : RecM Expr := do
   if let some decl := tc.lctx.find? name then
     return decl.type
-  throw <| .other "unknown free variable"
+  throw' <| .other "unknown free variable"
 
 def inferConstant (tc : Context) (name : Name) (ls : List Level) (inferOnly : Bool) :
-    Except KernelException Expr := do
+    RecM Expr := do
   let e := Expr.const name ls
-  let info ← tc.env.get name
+  let info ← match tc.env.get name with
+  | .ok i => pure i
+  | .error e => throw' e
   let ps := info.levelParams
   if ps.length != ls.length then
-    throw <| .other s!"incorrect number of universe levels parameters for '{e
+    throw' <| .other s!"incorrect number of universe levels parameters for '{e
       }', #{ps.length} expected, #{ls.length} provided"
   if !inferOnly then
     if info.isUnsafe && tc.safety != .unsafe then
-      throw <| .other s!"invalid declaration, it uses unsafe declaration '{e}'"
+      throw' <| .other s!"invalid declaration, it uses unsafe declaration '{e}'"
     if let .defnInfo v := info then
       if v.safety == .partial && tc.safety == .safe then
-        throw <| .other
+        throw' <| .other
           s!"invalid declaration, safe declaration must not contain partial declaration '{e}'"
     for l in ls do
       checkLevel tc l
@@ -268,7 +278,7 @@ def inferLet (e : Expr) (inferOnly : Bool) : RecM Expr := loop #[] #[] e where
         _ ← ensureSortCore (← inferType type inferOnly) type
         let valType ← inferType val inferOnly
         if !(← isDefEq valType type) then
-          throw <| .letTypeMismatch (← getEnv) (← getLCtx) name valType type
+          throw' <| .letTypeMismatch (← getEnv) (← getLCtx) name valType type
       loop fvars vals body
   | e => do
     let r ← inferType (e.instantiateRev fvars) inferOnly
@@ -301,13 +311,18 @@ def inferProj (typeName : Name) (idx : Nat) (struct structType : Expr) : RecM Ex
   let type ← whnf structType
   type.withApp fun I args => do
   let env ← getEnv
-  let fail {_} := do throw <| .invalidProj env (← getLCtx) e
+  let fail {_} := do throw' <| .invalidProj env (← getLCtx) e
   let .const I_name I_levels := I | fail
   if typeName != I_name then fail
-  let .inductInfo I_val ← env.get I_name | fail
+  let I_val ← match env.get I_name with
+  | .ok (.inductInfo i) => pure i
+  | .ok _ => throw' (.other "not inductInfo")
+  | .error e => throw' e
   let [c] := I_val.ctors | fail
   if args.size != I_val.numParams + I_val.numIndices then fail
-  let c_info ← env.get c
+  let c_info ← match env.get c with
+  | .ok i => pure i
+  | .error e => throw' e
   let mut r := c_info.instantiateTypeLevelParams I_levels
   for i in [:I_val.numParams] do
     let .forallE _ _ b _ ← whnf r | fail
@@ -326,7 +341,7 @@ def inferProj (typeName : Name) (idx : Nat) (struct structType : Expr) : RecM Ex
 
 def inferType' (e : Expr) (inferOnly : Bool) : RecM Expr := do
   if e.isBVar then
-    throw <| .other
+    throw' <| .other
       s!"type checker does not support loose bound variables, {""
         }replace them with free variables before invoking it"
   assert! !e.hasLooseBVars
@@ -338,7 +353,7 @@ def inferType' (e : Expr) (inferOnly : Bool) : RecM Expr := do
     | .mdata _ e => inferType' e inferOnly
     | .proj s idx e => inferProj s idx e (← inferType' e inferOnly)
     | .fvar n => inferFVar (← readThe Context) n
-    | .mvar _ => throw <| .other "kernel type checker does not support meta variables"
+    | .mvar _ => throw' <| .other "kernel type checker does not support meta variables"
     | .bvar _ => unreachable!
     | .sort l =>
       if !inferOnly then
@@ -355,7 +370,7 @@ def inferType' (e : Expr) (inferOnly : Bool) : RecM Expr := do
         let aType ← inferType' a inferOnly
         let dType := fType.bindingDomain!
         if !(← isDefEq dType aType) then
-          throw <| .appTypeMismatch (← getEnv) (← getLCtx) e fType aType
+          throw' <| .appTypeMismatch (← getEnv) (← getLCtx) e fType aType
         pure <| fType.bindingBody!.instantiate1 a
     | .letE .. => inferLet e inferOnly
   modify fun s => cond inferOnly
@@ -388,7 +403,10 @@ def reduceProj (idx : Nat) (struct : Expr) (cheapRec cheapProj : Bool) : RecM (O
   c.withApp fun mk args => do
   let .const mkC _ := mk | return none
   let env ← getEnv
-  let .ctorInfo mkInfo ← env.get mkC | return none
+  let mkInfo ← match env.get mkC with
+  | .ok (.ctorInfo i) => pure i
+  | .ok __ => return none
+  | .error e => throw' e
   return args[mkInfo.numParams + idx]?
 
 def isLetFVar (lctx : LocalContext) (fvar : FVarId) : Bool :=
@@ -470,12 +488,12 @@ def unfoldDefinition (env : Environment) (e : Expr) : Option Expr := do
   else
     unfoldDefinitionCore env e
 
-def reduceNative (_env : Environment) (e : Expr) : Except KernelException (Option Expr) := do
+def reduceNative (_env : Environment) (e : Expr) : RecM (Option Expr) := do
   let .app f (.const c _) := e | return none
   if f == .const ``reduceBool [] then
-    throw <| .other s!"lean4lean does not support 'reduceBool {c}' reduction"
+    throw' <| .other s!"lean4lean does not support 'reduceBool {c}' reduction"
   else if f == .const ``reduceNat [] then
-    throw <| .other s!"lean4lean does not support 'reduceNat {c}' reduction"
+    throw' <| .other s!"lean4lean does not support 'reduceNat {c}' reduction"
   return none
 
 def natLitExt? (e : Expr) : Option Nat := if e == .natZero then some 0 else e.natLit?
@@ -530,7 +548,7 @@ def whnf' (e : Expr) : RecM Expr := do
   if let some r := (← get).whnfCache.find? e then
     return r
   let rec loop t
-  | 0 => throw .deterministicTimeout
+  | 0 => throw' .deterministicTimeout
       -- do this instead if you want to have a chance of not clobbering the
       -- state on infinite loops:
       -- dbg_trace "looped too many times!"
@@ -617,7 +635,10 @@ def tryEtaExpansion (t s : Expr) : RecM Bool :=
 def tryEtaStructCore (t s : Expr) : RecM Bool := do
   let .const f _ := s.getAppFn | return false
   let env ← getEnv
-  let .ctorInfo fInfo ← env.get f | return false
+  let fInfo ← match env.get f with
+  | .ok (.ctorInfo x) => pure x
+  | .ok _ => return false
+  | .error e => throw' e
   unless s.getAppNumArgs == fInfo.numParams + fInfo.numFields do return false
   unless isStructureLike env fInfo.induct do return false
   unless ← isDefEq (← inferType t) (← inferType s) do return false
@@ -716,7 +737,7 @@ def isDefEqOffset (t s : Expr) : RecM LBool := do
 
 def lazyDeltaReduction (tn sn : Expr) : RecM ReductionStatus := loop tn sn 1000 where
   loop tn sn
-  | 0 => throw .deterministicTimeout
+  | 0 => throw' .deterministicTimeout
   | fuel+1 => do
     let r ← isDefEqOffset tn sn
     if r != .undef then return .bool (r == .true)
@@ -749,9 +770,10 @@ def isDefEqUnitLike (t s : Expr) : RecM Bool := do
   let tType ← whnf (← inferType t)
   let .const I _ := tType.getAppFn | return false
   let env ← getEnv
-  let .inductInfo { isRec := false, ctors := [c], numIndices := 0, .. } ← env.get I
+  let .inductInfo { isRec := false, ctors := [c], numIndices := 0, .. } ←
+      (match env.get I with | .ok e => pure e | .error e => throw' e)
     | return false
-  let .ctorInfo { numFields := 0, .. } ← env.get c | return false
+  let .ctorInfo { numFields := 0, .. } ← (match env.get c with | .ok e => pure e | .error e => throw' e) | return false
   isDefEqCore tType (← inferType s)
 
 def isDefEqCore' (t s : Expr) : RecM Bool := do
@@ -803,17 +825,17 @@ open Inner
 
 def Methods.withFuel : Nat → Methods
   | 0 =>
-    { isDefEqCore := fun _ _ => throw .deepRecursion
-      whnfCore := fun _ _ _ => throw .deepRecursion
-      whnf := fun _ => throw .deepRecursion
-      inferType := fun _ _ => throw .deepRecursion }
+    { isDefEqCore := fun _ _ => throw' .deepRecursion
+      whnfCore := fun _ _ _ => throw' .deepRecursion
+      whnf := fun _ => throw' .deepRecursion
+      inferType := fun _ _ => throw' .deepRecursion }
   | n + 1 =>
     { isDefEqCore := fun t s => isDefEqCore' t s (withFuel n)
       whnfCore := fun e r p => whnfCore' e r p (withFuel n)
       whnf := fun e => whnf' e (withFuel n)
       inferType := fun e i => inferType' e i (withFuel n) }
 
-def RecM.run (x : RecM α) : M α := x (Methods.withFuel 1000)
+def RecM.run (x : RecM α) : M α := x (Methods.withFuel 200)
 
 def check (e : Expr) (lps : List Name) : M Expr :=
   withReader ({ · with lparams := lps }) (inferType e (inferOnly := false)).run
@@ -842,7 +864,7 @@ def etaExpand (e : Expr) : M Expr :=
     let itType ← whnf <| ← inferType <| it.instantiateRev fvars
     if !itType.isForall then return e
     let rec loop2 fvars args
-    | 0, _ => throw .deepRecursion
+    | 0, _ => throw' .deepRecursion
     | fuel + 1, .forallE name dom body bi => do
       let d := dom.instantiateRev fvars
       let id := ⟨← mkFreshId⟩
