@@ -68,21 +68,35 @@ syntax (name := l4lwhnf) "#l4lwhnf " term : command
 
 syntax (name := l4lreduce) "#l4lreduce " term : command
 
+#check CommandElabM
+
 @[command_elab l4lreduce] def elabl4lreduce : CommandElab
-  | `(#l4lreduce%$tk $term) => withoutModifyingEnv <| runTermElabM fun _ => Term.withDeclName `_reduce do
-    let e ← Term.elabTerm term none
-    Term.synthesizeSyntheticMVarsNoPostponing
-    let e ← Term.levelMVarToParam (← instantiateMVars e)
-    let env ← getEnv
-    let (e', tr) ← match TypeChecker.M.run env .safe {} (reduceAndTrace e) with
+  | `(#l4lreduce%$tk $term) => withoutModifyingEnv do
+    let (e', tr) ← runTermElabM fun _ => Term.withDeclName `_reduce do
+      let e ← Term.elabTerm term none
+      Term.synthesizeSyntheticMVarsNoPostponing
+      let e ← Term.levelMVarToParam (← instantiateMVars e)
+      let env ← getEnv
+      match TypeChecker.M.run env .safe {} (reduceAndTrace e) with
           | .error e => throwError s!"kernel exception: {e.toString}"
           | .ok v => pure v
 
-    let plain ← tr.mapM (fun x ↦ do
-      let x' ← Lean.PrettyPrinter.ppExpr x
-      pure (Std.Format.pretty x' 80))
+    let plain ← do
+      modifyScope fun s ↦ s
+      runTermElabM fun _ => do
+      tr.mapM (fun x ↦ do
+        let x' ← Lean.PrettyPrinter.ppExpr x
+        pure (Std.Format.pretty x' 100))
 
-    let mut traces : Traces := ⟨plain, []⟩
+    let with_proofs ← do
+      modifyScope fun s ↦ { s with opts := s.opts.set `pp.proofs true }
+      runTermElabM fun _ => do
+      tr.mapM (fun x ↦ do
+        let x' ← Lean.PrettyPrinter.ppExpr x
+        pure (Std.Format.pretty x' 100))
+
+
+    let mut traces : Traces := ⟨plain, with_proofs⟩
     let ppj := Lean.ToJson.toJson traces
     dbg_trace ppj
     logInfoAt tk e'
