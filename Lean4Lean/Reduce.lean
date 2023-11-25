@@ -50,6 +50,8 @@ def Lean.KernelException.toString (e : KernelException) : String := match e with
 structure Traces where
   plain : List String := []
   proofs: List String := []
+  explicit: List String := []
+  proofs_and_explicit: List String := []
 deriving ToJson
 
 syntax (name := l4lwhnf) "#l4lwhnf " term : command
@@ -97,8 +99,21 @@ def LINE_WIDTH := 150
         let x' ← Lean.PrettyPrinter.ppExpr x
         pure (Std.Format.pretty x' LINE_WIDTH))
 
+    let explicit ← do
+      modifyScope fun s ↦ { s with opts := s.opts.set `pp.explicit true }
+      runTermElabM fun _ => do
+      tr.mapM (fun x ↦ do
+        let x' ← Lean.PrettyPrinter.ppExpr x
+        pure (Std.Format.pretty x' LINE_WIDTH))
 
-    let mut traces : Traces := ⟨plain, with_proofs⟩
+    let proofs_and_explicit ← do
+      modifyScope fun s ↦ { s with opts := (s.opts.set `pp.explicit true).set `pp.proof true }
+      runTermElabM fun _ => do
+      tr.mapM (fun x ↦ do
+        let x' ← Lean.PrettyPrinter.ppExpr x
+        pure (Std.Format.pretty x' LINE_WIDTH))
+
+    let mut traces : Traces := ⟨plain, with_proofs, explicit, proofs_and_explicit⟩
     let ppj := Lean.ToJson.toJson traces
     dbg_trace ppj
     if let some e' := e' then

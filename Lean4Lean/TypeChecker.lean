@@ -835,7 +835,7 @@ def Methods.withFuel : Nat → Methods
       whnf := fun e => whnf' e (withFuel n)
       inferType := fun e i => inferType' e i (withFuel n) }
 
-def RecM.run (x : RecM α) : M α := x (Methods.withFuel 200)
+def RecM.run (x : RecM α) : M α := x (Methods.withFuel 1000)
 
 def check (e : Expr) (lps : List Name) : M Expr :=
   withReader ({ · with lparams := lps }) (inferType e (inferOnly := false)).run
