@@ -46,6 +46,12 @@ def Lean.KernelException.toString (e : KernelException) : String := match e with
 | .excessiveMemory => "excessive memory"
 | _ => "x"
 
+
+structure Traces where
+  plain : List String := []
+  proofs: List String := []
+deriving ToJson
+
 syntax (name := l4lwhnf) "#l4lwhnf " term : command
 
 @[command_elab l4lwhnf] def elabl4lwhnf : CommandElab
@@ -71,11 +77,13 @@ syntax (name := l4lreduce) "#l4lreduce " term : command
     let (e', tr) ← match TypeChecker.M.run env .safe {} (reduceAndTrace e) with
           | .error e => throwError s!"kernel exception: {e.toString}"
           | .ok v => pure v
-    let pp ← tr.mapM (fun x ↦ do
+
+    let plain ← tr.mapM (fun x ↦ do
       let x' ← Lean.PrettyPrinter.ppExpr x
       pure (Std.Format.pretty x' 80))
 
-    let ppj := Lean.ToJson.toJson pp
+    let mut traces : Traces := ⟨plain, []⟩
+    let ppj := Lean.ToJson.toJson traces
     dbg_trace ppj
     logInfoAt tk e'
   | _ => throwUnsupportedSyntax
