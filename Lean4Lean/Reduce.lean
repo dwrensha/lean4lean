@@ -68,7 +68,7 @@ syntax (name := l4lwhnf) "#l4lwhnf " term : command
 
 syntax (name := l4lreduce) "#l4lreduce " term : command
 
-#check CommandElabM
+def LINE_WIDTH := 150
 
 @[command_elab l4lreduce] def elabl4lreduce : CommandElab
   | `(#l4lreduce%$tk $term) => withoutModifyingEnv do
@@ -86,14 +86,14 @@ syntax (name := l4lreduce) "#l4lreduce " term : command
       runTermElabM fun _ => do
       tr.mapM (fun x ↦ do
         let x' ← Lean.PrettyPrinter.ppExpr x
-        pure (Std.Format.pretty x' 100))
+        pure (Std.Format.pretty x' LINE_WIDTH))
 
     let with_proofs ← do
       modifyScope fun s ↦ { s with opts := s.opts.set `pp.proofs true }
       runTermElabM fun _ => do
       tr.mapM (fun x ↦ do
         let x' ← Lean.PrettyPrinter.ppExpr x
-        pure (Std.Format.pretty x' 100))
+        pure (Std.Format.pretty x' LINE_WIDTH))
 
 
     let mut traces : Traces := ⟨plain, with_proofs⟩
