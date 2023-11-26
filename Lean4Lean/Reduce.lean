@@ -137,7 +137,9 @@ def decimalDigitsAux : Nat → Nat → List Nat
 def decimalDigits' (x : Nat) : List Nat := decimalDigitsAux x x
 
 --#l4lwhnf decimalDigits 104546
--- #l4lreduce decimalDigits' 4
+
+--set_option maxHeartbeats 0 in
+--#l4lreduce decimalDigits' 123456789
 
 --#l4lreduce [1,2] ++ [3,4]
 
@@ -146,7 +148,6 @@ def decimalDigits' (x : Nat) : List Nat := decimalDigitsAux x x
 --set_option pp.explicit true in
 --#l4lreduce decimalDigits 1
 
---set_option pp.all true in
 --#l4lreduce 2 + 2
 --#l4lreduce "hello".length
 
@@ -166,9 +167,6 @@ def ackermann : Nat → Nat → Nat
  | p + 1 => fun n ↦ iterate (ackermann p) n (ackermann p 1)
 
 --#l4lreduce ackermann 1 1
-
-#check Acc.rec
-
 
 def fib : Nat → Nat
 | 0 => 1
