@@ -51,7 +51,6 @@ structure Traces where
   plain : List String := []
   proofs: List String := []
   explicit: List String := []
-  proofs_and_explicit: List String := []
 deriving ToJson
 
 syntax (name := l4lwhnf) "#l4lwhnf " term : command
@@ -106,14 +105,7 @@ def LINE_WIDTH := 150
         let x' ← Lean.PrettyPrinter.ppExpr x
         pure (Std.Format.pretty x' LINE_WIDTH))
 
-    let proofs_and_explicit ← do
-      modifyScope fun s ↦ { s with opts := (s.opts.set `pp.explicit true).set `pp.proof true }
-      runTermElabM fun _ => do
-      tr.mapM (fun x ↦ do
-        let x' ← Lean.PrettyPrinter.ppExpr x
-        pure (Std.Format.pretty x' LINE_WIDTH))
-
-    let mut traces : Traces := ⟨plain, with_proofs, explicit, proofs_and_explicit⟩
+    let mut traces : Traces := ⟨plain, with_proofs, explicit⟩
     let ppj := Lean.ToJson.toJson traces
     dbg_trace ppj
     if let some e' := e' then
@@ -144,16 +136,12 @@ def decimalDigits' (x : Nat) : List Nat := decimalDigitsAux x x
 --#l4lreduce [1,2] ++ [3,4]
 
 --set_option maxHeartbeats 0 in
---set_option pp.proofs true in
---set_option pp.explicit true in
---#l4lreduce decimalDigits 1
+--#l4lreduce decimalDigits 13
 
 --#l4lreduce 2 + 2
 --#l4lreduce "hello".length
 
-
 -- #l4lreduce "hello" ++ "world"
-
 
 -- convert between numeric types...
 -- quicksort
