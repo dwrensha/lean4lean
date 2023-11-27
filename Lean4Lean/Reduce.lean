@@ -120,10 +120,10 @@ def decimalDigits : Nat → List Nat
   | n + 1 => ((n + 1) % 10 :: decimalDigits ((n + 1) / 10))
 decreasing_by exact Nat.div_lt_self (Nat.succ_pos _) one_lt_ten
 
--- if we add a "gas" parameter, then l4lreduce does just fine.
+-- First argument is "fuel".
 def decimalDigitsAux : Nat → Nat → List Nat
-  | 0, _ => []
-  | _, 0 => []
+  |     0, _ => []
+  |     _, 0 => []
   | m + 1, n => (n % 10 :: decimalDigitsAux m (n / 10))
 
 def decimalDigits' (x : Nat) : List Nat := decimalDigitsAux x x
@@ -161,4 +161,4 @@ def fib : Nat → Nat
 | 1 => 1
 | n + 2 => fib n + fib (n + 1)
 
---#l4lreduce fib 10
+--#l4lreduce fib 4
