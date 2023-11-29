@@ -107,7 +107,11 @@ def LINE_WIDTH := 150
 
     let mut traces : Traces := ⟨plain, with_proofs, explicit⟩
     let ppj := Lean.ToJson.toJson traces
-    dbg_trace ppj
+
+    let filename := "/tmp/trace.json"
+    let h ← IO.FS.Handle.mk filename IO.FS.Mode.write
+    h.putStr s!"{ppj}"
+    dbg_trace "wrote trace to {filename}"
     if let some e' := e' then
       logInfoAt tk e'
   | _ => throwUnsupportedSyntax
