@@ -165,4 +165,12 @@ def fib : Nat → Nat
 | 1 => 1
 | n + 2 => fib n + fib (n + 1)
 
---#l4lreduce fib 4
+def fact : Nat → Nat
+| 0 => 1
+| n + 1 => (n + 1) * fact n
+
+--
+noncomputable def fact' : Nat → Nat :=
+fun n ↦ Nat.rec 1 (fun m ih ↦ (m + 1) * ih) n
+
+--#l4lreduce fact' 100
