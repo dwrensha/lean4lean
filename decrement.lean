@@ -7,4 +7,7 @@ def minus3 : Nat → Nat
 decreasing_by exact Nat.sub_lt_succ n 2
 
 --set_option maxHeartbeats 0 in
---#l4lreduce minus3 7
+--#l4lreduce minus3 20
+
+-- This builds a very large term. Try increasing the numeral!
+--#reduce (WellFounded.apply Nat.lt_wfRel.wf 4)
