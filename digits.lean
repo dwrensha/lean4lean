@@ -25,3 +25,8 @@ def decimalDigitsWithFuel : Nat → Nat → List Nat
 def decimalDigits' (x : Nat) : List Nat := decimalDigitsWithFuel x x
 
 --#reduce decimalDigits' 1234
+#print decimalDigits
+
+#check Or.rec
+#check Or.recOn
+

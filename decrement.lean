@@ -23,3 +23,8 @@ fun n ↦
 --set_option maxRecDepth 4000 in
 --set_option maxHeartbeats 0 in
 --#l4lreduce minus3 20
+
+#check Nat.lt_wfRel
+#check (Nat.succ_le_succ (Nat.zero_le 0))
+
+#check Nat.eq_or_lt_of_le

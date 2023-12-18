@@ -69,7 +69,7 @@ syntax (name := l4lwhnf) "#l4lwhnf " term : command
 
 syntax (name := l4lreduce) "#l4lreduce " term : command
 
-def LINE_WIDTH := 150
+def LINE_WIDTH := 100
 
 @[command_elab l4lreduce] def elabl4lreduce : CommandElab
   | `(#l4lreduce%$tk $term) => withoutModifyingEnv do
@@ -125,12 +125,12 @@ def decimalDigits : Nat → List Nat
 decreasing_by exact Nat.div_lt_self (Nat.succ_pos _) one_lt_ten
 
 -- First argument is "fuel".
-def decimalDigitsAux : Nat → Nat → List Nat
+def decimalDigitsWithFuel : Nat → Nat → List Nat
   |     0, _ => []
   |     _, 0 => []
-  | m + 1, n => (n % 10 :: decimalDigitsAux m (n / 10))
+  | m + 1, n => (n % 10 :: decimalDigitsWithFuel m (n / 10))
 
-def decimalDigits' (x : Nat) : List Nat := decimalDigitsAux x x
+def decimalDigits' (x : Nat) : List Nat := decimalDigitsWithFuel x x
 
 --#l4lwhnf decimalDigits 104546
 
@@ -169,8 +169,11 @@ def fact : Nat → Nat
 | 0 => 1
 | n + 1 => (n + 1) * fact n
 
+--set_option maxHeartbeats 0 in
+--#l4lreduce fact 20
+
 --
 noncomputable def fact' : Nat → Nat :=
 fun n ↦ Nat.rec 1 (fun m ih ↦ (m + 1) * ih) n
 
---#l4lreduce fact' 100
+--#l4lreduce fact' 10
