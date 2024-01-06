@@ -1,6 +1,6 @@
 import Lean4Lean.Declaration
 import Lean4Lean.Level
-import Lean4Lean.Quot
+import Lean4Lean.Environment.Basic
 import Lean4Lean.Inductive.Reduce
 import Lean4Lean.Instantiate
 import Lean4Lean.ForEachExprV
