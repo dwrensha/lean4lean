@@ -106,6 +106,24 @@ def disableTracing {α : Type} (act : RecM α) : RecM α := do
   modify fun st => {st with traceEnabled := ta}
   pure r
 
+def quotReduceRec' (e : Expr) (whnf : Expr → RecM Expr) : RecM (Option Expr) := do
+  let .const fn _ := e.getAppFn | return none
+  let cont mkPos argPos := do
+    let args := e.getAppArgs
+    if h : mkPos < args.size then
+      let mk ←
+        descendExprRec (fun ee ↦ mkAppN e.getAppFn (args.set! mkPos ee)) (whnf args[mkPos])
+      if !mk.isAppOfArity ``Quot.mk 3 then return none
+      let mut r := Expr.app args[argPos]! mk.appArg!
+      let elimArity := mkPos + 1
+      if elimArity < args.size then
+        r := mkAppRange r elimArity args.size args
+      return some r
+    else return none
+  if fn == ``Quot.lift then cont 5 3
+  else if fn == ``Quot.ind then cont 4 3
+  else return none
+
 def toCtorWhenK' (env : Environment) (whnf : Expr → RecM Expr) (inferType : Expr → RecM Expr) (isDefEq : Expr → Expr → RecM Bool) (rval : RecursorVal) (e : Expr) : RecM Expr := do
   assert! rval.k
   let appType' ← disableTracing (inferType e)
@@ -379,7 +397,7 @@ def whnfCore (e : Expr) (cheapRec := false) (cheapProj := false) : RecM Expr :=
 def reduceRecursor (e : Expr) (cheapRec cheapProj : Bool) : RecM (Option Expr) := do
   let env ← getEnv
   if env.header.quotInit then
-    if let some r ← quotReduceRec e whnf then
+    if let some r ← quotReduceRec' e whnf then
       return r
   let whnf' e := if cheapRec then whnfCore e cheapRec cheapProj else whnf e
   if let some r ← inductiveReduceRec' env e whnf' inferType isDefEq then
