@@ -70,12 +70,17 @@ end WellFounded
 
 def minus3'' : Nat → List Nat :=
 WellFounded.Nat.fix (fun x ↦ x) fun a a_1 ↦
-  (match (motive := (x : Nat) → ((y : Nat) → InvImage (fun x1 x2 ↦ x1 < x2) (fun x ↦ x) y x → List Nat) → List Nat)
+  (match (motive := (x : Nat) →
+           ((y : Nat) → InvImage (fun x1 x2 ↦ x1 < x2) (fun x ↦ x) y x → List Nat) → List Nat)
       a with
-    | 0 => fun x ↦ []
-    | Nat.succ n => fun x ↦ (n + 1) :: x (n - 2) sorry)
+    | 0 => fun _ ↦ []
+    | Nat.succ n => fun x ↦ (n + 1) :: x (n - 2) (Nat.sub_lt_succ n 2))
     a_1
 
 #check minus3
 
 #reduce minus3'' 200
+
+--set_option maxRecDepth 4000 in
+--set_option maxHeartbeats 0 in
+--#l4lreduce minus3'' 40
