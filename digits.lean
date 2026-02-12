@@ -43,4 +43,4 @@ WellFounded.Nat.fix (fun x ↦ x) fun a a_1 ↦
 
 --set_option maxRecDepth 4000 in
 --set_option maxHeartbeats 0 in
---#l4lreduce decimalDigits'' 12345
+--#l4lreduce decimalDigits'' 123456

@@ -24,12 +24,11 @@ In contrast to to `WellFounded.fix`, this fixpoint operator reduces on closed te
 when `h x` evalutes to a ground value)
 
 -/
-def Nat.fix : (x : α) → motive x :=
-  let rec go : ∀ (fuel : Nat) (x : α), (h x < fuel) → motive x :=
-    fun fuel x hfuel ↦
-     match fuel with
-     | Nat.zero => (Nat.not_succ_le_zero _ hfuel).elim
-     | Nat.succ f' => F x (fun y hy => go f' y (Nat.lt_of_lt_of_le hy (Nat.le_of_lt_add_one hfuel)))
-  fun x => go (Nat.eager (h x + 1)) x (Nat.eager_eq _ ▸ Nat.lt_add_one _)
+def Nat.fix (x : α) : motive x :=
+  let rec go : ∀ (fuel : Nat) (x : α), (h x < fuel) → motive x := fun fuel x hfuel ↦
+    match fuel with
+    | Nat.zero => (Nat.not_succ_le_zero _ hfuel).elim
+    | Nat.succ f' => F x (fun y hy => go f' y (Nat.lt_of_lt_of_le hy (Nat.le_of_lt_add_one hfuel)))
+  go (Nat.eager (h x + 1)) x (Nat.eager_eq _ ▸ Nat.lt_add_one _)
 
 end WellFounded
