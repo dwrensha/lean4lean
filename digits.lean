@@ -1,4 +1,5 @@
-
+import Lean4Lean.Natfix
+import Lean4Lean.Reduce
 
 /--
  Computes the decimal digits of a natural number, in little-endian order.
@@ -30,3 +31,16 @@ def decimalDigits' (x : Nat) : List Nat := decimalDigitsWithFuel x x
 #check Or.rec
 #check Or.recOn
 
+-------------------------------
+
+def decimalDigits'' : Nat → List Nat :=
+WellFounded.Nat.fix (fun x ↦ x) fun a a_1 ↦
+  (match (motive := (x : Nat) → ((y : Nat) → InvImage (fun x1 x2 ↦ x1 < x2) (fun x ↦ x) y x → List Nat) → List Nat)
+      a with
+    | 0 => fun x ↦ []
+    | Nat.succ n => fun x ↦ (n + 1) % 10 :: x ((n + 1) / 10) (by sorry))
+    a_1
+
+--set_option maxRecDepth 4000 in
+--set_option maxHeartbeats 0 in
+--#l4lreduce decimalDigits'' 12345

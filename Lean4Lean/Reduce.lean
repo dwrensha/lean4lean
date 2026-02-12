@@ -116,21 +116,21 @@ def LINE_WIDTH := 100
       logInfoAt tk e'
   | _ => throwUnsupportedSyntax
 
-def one_lt_ten : 1 < 10 := Nat.succ_lt_succ (Nat.succ_pos 8)
+private def one_lt_ten : 1 < 10 := Nat.succ_lt_succ (Nat.succ_pos 8)
 
 --- l4lreduce has trouble with this
-def decimalDigits : Nat → List Nat
+private def decimalDigits : Nat → List Nat
   | 0 => []
   | n + 1 => ((n + 1) % 10 :: decimalDigits ((n + 1) / 10))
 decreasing_by exact Nat.div_lt_self (Nat.succ_pos _) one_lt_ten
 
 -- First argument is "fuel".
-def decimalDigitsWithFuel : Nat → Nat → List Nat
+private def decimalDigitsWithFuel : Nat → Nat → List Nat
   |     0, _ => []
   |     _, 0 => []
   | m + 1, n => (n % 10 :: decimalDigitsWithFuel m (n / 10))
 
-def decimalDigits' (x : Nat) : List Nat := decimalDigitsWithFuel x x
+private def decimalDigits' (x : Nat) : List Nat := decimalDigitsWithFuel x x
 
 --#l4lwhnf decimalDigits 104546
 
