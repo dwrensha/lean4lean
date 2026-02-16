@@ -31,7 +31,7 @@ fun n ↦
 #check Nat.eq_or_lt_of_le
 
 def minus3'' : Nat → List Nat :=
-WellFounded.Nat.fix (fun x ↦ x) fun a a_1 ↦
+WellFounded.Nat.fix (motive := fun _ ↦ List Nat) (fun x ↦ x) fun a a_1 ↦
   (match (motive := (x : Nat) →
            ((y : Nat) → InvImage (fun x1 x2 ↦ x1 < x2) (fun x ↦ x) y x → List Nat) → List Nat)
       a with
@@ -46,3 +46,4 @@ WellFounded.Nat.fix (fun x ↦ x) fun a a_1 ↦
 --set_option maxRecDepth 4000 in
 --set_option maxHeartbeats 0 in
 --#l4lreduce minus3'' 40
+#check WellFounded.Nat.fix
