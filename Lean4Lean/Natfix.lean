@@ -22,7 +22,7 @@ when `h x` evalutes to a ground value)
 def Nat.fix
     {α : Sort u} {motive : α → Sort v}
     (h : α → Nat)
-    (F : (x : α) → ((y : α) → InvImage (· < ·) h y x → motive y) → motive x)
+    (F : (x : α) → ((y : α) → h y < h x → motive y) → motive x)
     (x : α) :
     motive x :=
   let rec go : ∀ (fuel : Nat) (x : α), (h x < fuel) → motive x := fun fuel x hfuel ↦
@@ -30,7 +30,6 @@ def Nat.fix
     | Nat.zero => (Nat.not_succ_le_zero _ hfuel).elim
     | Nat.succ f' => F x (fun y hy => go f' y (Nat.lt_of_lt_of_le hy (Nat.le_of_lt_add_one hfuel)))
   go (Nat.eager (h x + 1)) x (Nat.eager_eq _ ▸ Nat.lt_add_one _)
-
 
 
 -- Just showing that this is more general than strong induction:

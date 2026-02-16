@@ -43,7 +43,31 @@ WellFounded.Nat.fix (motive := fun _ ↦ List Nat) (fun x ↦ x) fun a a_1 ↦
 
 #reduce minus3'' 200
 
+
+section plus3
+
+--@[semireducible]
+--def plus3 : Nat → List Nat
+--| 0 => []
+--| n + 1 => (n + 1) :: plus3 (n + 3)
+--decreasing_by sorry
+
+--#print plus3
+
+
+def plus3 : Nat → List Nat :=
+WellFounded.Nat.fix (fun x ↦ x) fun a a_1 ↦
+  (match (motive := (x : Nat) → ((y : Nat) → y < x → List Nat) → List Nat)
+      a with
+    | 0 => fun x ↦ []
+    | Nat.succ n => fun x ↦ (n + 1) :: x (n + 1 + 3) sorry)
+    a_1
+
+#reduce plus3 2
+
 --set_option maxRecDepth 4000 in
 --set_option maxHeartbeats 0 in
---#l4lreduce minus3'' 40
+--#l4lreduce plus3 2
 #check WellFounded.Nat.fix
+
+end plus3

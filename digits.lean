@@ -28,14 +28,11 @@ def decimalDigits' (x : Nat) : List Nat := decimalDigitsWithFuel x x
 --#reduce decimalDigits' 1234
 #print decimalDigits
 
-#check Or.rec
-#check Or.recOn
-
 -------------------------------
 
 def decimalDigits'' : Nat → List Nat :=
 WellFounded.Nat.fix (fun x ↦ x) fun a a_1 ↦
-  (match (motive := (x : Nat) → ((y : Nat) → InvImage (fun x1 x2 ↦ x1 < x2) (fun x ↦ x) y x → List Nat) → List Nat)
+  (match (motive := (x : Nat) → ((y : Nat) → y < x → List Nat) → List Nat)
       a with
     | 0 => fun x ↦ []
     | Nat.succ n => fun x ↦ (n + 1) % 10 :: x ((n + 1) / 10) (by sorry))
