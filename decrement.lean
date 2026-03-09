@@ -7,8 +7,23 @@ def minus3' : Nat → List Nat
 | n + 1 => (n + 1) :: minus3' (n - 2)
 decreasing_by exact Nat.sub_lt_succ n 2
 
---set_option maxHeartbeats 0 in
---#reduce minus3' 10
+
+def minus2 : Nat → List Nat
+| 0 => []
+| n + 1 => (n + 1) :: minus2 (n - 1)
+decreasing_by exact Nat.sub_lt_succ _ _
+
+--set_option maxRecDepth 1000 in
+--#reduce minus2 200
+
+def make_finite_list : Nat → List Nat
+| Nat.zero => []
+| Nat.succ n => Nat.succ n :: make_finite_list ((Nat.succ n) / 2)
+decreasing_by
+  exact Nat.div_lt_self (Nat.succ_pos _) (Nat.succ_lt_succ (Nat.succ_pos _))
+
+--set_option maxRecDepth 100000 in
+--#reduce div2 1024
 
 def minus3 : Nat → List Nat :=
 fun n ↦
@@ -20,6 +35,7 @@ fun n ↦
 
 -- This builds a very large term. Try increasing the numeral!
 --#reduce (WellFounded.apply Nat.lt_wfRel.wf 4)
+--#reduce minus3 200
 
 --set_option maxRecDepth 4000 in
 --set_option maxHeartbeats 0 in
