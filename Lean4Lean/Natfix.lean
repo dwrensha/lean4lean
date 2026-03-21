@@ -31,7 +31,6 @@ def Nat.fix
     | Nat.succ f' => F x (fun y hy => go f' y (Nat.lt_of_lt_of_le hy (Nat.le_of_lt_add_one hfuel)))
   go (Nat.eager (h x + 1)) x (Nat.eager_eq _ ▸ Nat.lt_add_one _)
 
-
 -- Just showing that this is more general than strong induction:
 protected noncomputable def strongRecOn
    {motive : Nat → Sort u}

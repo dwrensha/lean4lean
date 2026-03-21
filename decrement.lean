@@ -16,11 +16,27 @@ decreasing_by exact Nat.sub_lt_succ _ _
 --set_option maxRecDepth 1000 in
 --#reduce minus2 200
 
-def make_finite_list : Nat → List Nat
+def make_finite_list' : Nat → List Nat
 | Nat.zero => []
-| Nat.succ n => Nat.succ n :: make_finite_list ((Nat.succ n) / 2)
+| Nat.succ n => Nat.succ n :: make_finite_list' ((Nat.succ n) / 2)
 decreasing_by
   exact Nat.div_lt_self (Nat.succ_pos _) (Nat.succ_lt_succ (Nat.succ_pos _))
+
+
+def make_finite_list : Nat → List Nat :=
+WellFounded.Nat.fix (motive := fun _ ↦ List Nat) (fun x ↦ x) fun a a_1 ↦
+  (match (motive := (x : Nat) →
+           ((y : Nat) → InvImage (fun x1 x2 ↦ x1 < x2) (fun x ↦ x) y x → List Nat) → List Nat)
+      a with
+    | 0 => fun _ ↦ []
+    | Nat.succ n => fun x ↦
+        (Nat.succ n) ::
+          x ((Nat.succ n) / 2) (Nat.div_lt_self (Nat.succ_pos _) (Nat.succ_lt_succ (Nat.succ_pos _))))
+    a_1
+
+set_option maxRecDepth 4000 in
+set_option maxHeartbeats 0 in
+#l4lreduce make_finite_list 1024
 
 --set_option maxRecDepth 100000 in
 --#reduce div2 1024

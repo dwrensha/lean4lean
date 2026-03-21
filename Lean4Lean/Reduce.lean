@@ -69,7 +69,7 @@ syntax (name := l4lwhnf) "#l4lwhnf " term : command
 
 syntax (name := l4lreduce) "#l4lreduce " term : command
 
-def LINE_WIDTH := 100
+def LINE_WIDTH := 150
 
 @[command_elab l4lreduce] def elabl4lreduce : CommandElab
   | `(#l4lreduce%$tk $term) => withoutModifyingEnv do
